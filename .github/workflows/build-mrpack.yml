@@ -56,10 +56,12 @@ jobs:
     - name: Find mrpack file name
       id: find_mrpack
       run: |
-        # Sucht nach der .mrpack-Datei, die vom Export-Befehl erstellt wurde.
-        MRPACK_FILE=$(find . -name "*.mrpack")
-        # Speichert den gefundenen Dateinamen als Output für den nächsten Schritt.
-        echo "mrpack_file=$MRPACK_OUTPUT" >> $GITHUB_OUTPUT
+        # Nutze find, um nach der .mrpack-Datei zu suchen. 
+        # Da der Dateiname Leerzeichen enthält, wird er als eine Zeile ausgegeben.
+        MRPACK_FILE=$(find . -name "*.mrpack" -print -quit)
+
+        # Gib den gefundenen Pfad als Output-Variable aus
+        echo "mrpack_file=$MRPACK_FILE" >> $GITHUB_OUTPUT
 
     # 7. Hochladen des .mrpack als GitHub-Artefakt
     - name: Upload .mrpack artifact
