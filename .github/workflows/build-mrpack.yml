@@ -45,10 +45,32 @@ jobs:
     - name: Make packwiz executable
       run: chmod +x packwiz
 
-    # 5. Modrinth Pack (.mrpack) bauen
+    # 5. packwiz-Struktur initialisieren und Mods hinzufügen
+    - name: Initialize packwiz and add mods
+      run: |
+        # Installiere 'jq' zum Parsen von JSON
+        sudo apt-get update
+        sudo apt-get install jq -y
+        
+        # Initialisiere ein neues packwiz-Projekt nicht-interaktiv mit allen notwendigen Parametern
+        # Wir verwenden 'fabric' basierend auf den Mod-Dateien in deiner modrinth.index.json
+        ./packwiz init --name "Heuli Modpack Ullrichmon" --mc-version "1.21.1" --fabric-version "0.16.10" --author VollmondHeuler --version "1.0.0" --fabric-latest
+
+        # Extrahiere die Modrinth Project IDs aus den Download-URLs und füge sie zu packwiz hinzu
+        jq -r '.files[] | .downloads[]' modrinth.index.json | grep -oP 'https://cdn.modrinth.com/data/\K[^/]+' | while read MOD_ID; do
+          if [ -n "$MOD_ID" ]; then
+            echo "Adding mod: $MOD_ID"
+            # Füge die Mod mit '-y' hinzu, um Abhängigkeiten automatisch zu bestätigen
+            ./packwiz modrinth add -y "$MOD_ID"
+          fi
+        done
+        
+        # Aktualisiere die packwiz-Struktur und überschreibe den Index (-r)
+        # Dies ist entscheidend, um sicherzustellen, dass index.toml korrekt generiert wird.
+        ./packwiz index -r
+
+    # 6. Modrinth Pack (.mrpack) bauen
     - name: Build Modrinth pack (.mrpack)
-      # Führt den packwiz Export-Befehl aus.
-      # Stelle sicher, dass deine packwiz-Konfiguration (.packwiz Ordner, pack.toml) im Repo liegt.
       run: |
         ./packwiz modrinth export
 
