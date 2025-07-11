@@ -1,53 +1,70 @@
 name: Build Modrinth Pack
 
 on:
-  # Löst den Workflow aus, wenn du Code auf den main-Branch pushst
-  # oder wenn du einen Pull Request öffnest
+  # Löst den Workflow bei Pushes oder Pull Requests auf dem 'main'-Branch aus.
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-  # Ermöglicht auch das manuelle Auslösen des Workflows von der GitHub Actions-Seite
+  # Ermöglicht das manuelle Starten des Workflows über die GitHub-Benutzeroberfläche.
   workflow_dispatch:
 
 jobs:
   build:
+    # Führt den Workflow auf einem Ubuntu-Runner aus.
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout des Codes
+    # 1. Checkout des Repositorys
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. Setup und Installation von packwiz
-    - name: Set up packwiz
-      # Verwende eine vorgefertigte Action zum Installieren von packwiz, oder lade es manuell herunter
-      # Hier verwenden wir das offizielle Binary-Release von packwiz
-      run: |
-        curl -L https://github.com/comp500/packwiz/releases/latest/download/packwiz-linux.tar.gz | tar xz
-        chmod +x packwiz
+    # 2. Go-Umgebung einrichten (notwendig zum Kompilieren von packwiz)
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        # Verwende eine stabile Go-Version
+        go-version: '1.22'
 
-    # 3. Bauen des Modpacks als .mrpack
+    # 3. packwiz aus dem Quellcode kompilieren
+    - name: Compile packwiz
+      run: |
+        # Klonen des packwiz Repositories.
+        git clone https://github.com/packwiz/packwiz.git packwiz_repo
+        # Wechseln in das Repository-Verzeichnis.
+        cd packwiz_repo
+        
+        # Kompilieren von packwiz. Wir verwenden einen korrekten Pfad, um das Binary zu bauen.
+        # Der Befehl go build . erstellt das Binary aus dem aktuellen Verzeichnis
+        go build -o ../packwiz .
+        
+        # Zurück ins Hauptverzeichnis.
+        cd ..
+
+    # 4. packwiz ausführbar machen
+    - name: Make packwiz executable
+      run: chmod +x packwiz
+
+    # 5. Modrinth Pack (.mrpack) bauen
     - name: Build Modrinth pack (.mrpack)
-      # Wir führen packwiz aus, um das Modrinth Pack zu erstellen.
-      # Der Befehl 'packwiz modrinth export' erstellt die .mrpack-Datei.
-      # Du musst den Namen deines Modpacks und die Versionsnummer kennen, um den Dateinamen zu identifizieren.
+      # Führt den packwiz Export-Befehl aus.
+      # Stelle sicher, dass deine packwiz-Konfiguration (.packwiz Ordner, pack.toml) im Repo liegt.
       run: |
         ./packwiz modrinth export
 
-    # 4. Finden des gebauten .mrpack-Dateinamens
-    # Da der Dateiname dynamisch sein kann (z.B. MeinModpack-1.0.0.mrpack), müssen wir ihn finden.
+    # 6. Dateinamen des gebauten .mrpack finden
     - name: Find mrpack file name
       id: find_mrpack
       run: |
-        # Wir suchen nach der Datei, die mit .mrpack endet
+        # Sucht nach der .mrpack-Datei, die vom Export-Befehl erstellt wurde.
         MRPACK_FILE=$(find . -name "*.mrpack")
-        # Speichern des Dateinamens als Output für den nächsten Schritt
-        echo "mrpack_file=$MRPACK_FILE" >> $GITHUB_OUTPUT
+        # Speichert den gefundenen Dateinamen als Output für den nächsten Schritt.
+        echo "mrpack_file=$MRPACK_OUTPUT" >> $GITHUB_OUTPUT
 
-    # 5. Hochladen des .mrpack als GitHub-Artefakt
+    # 7. Hochladen des .mrpack als GitHub-Artefakt
     - name: Upload .mrpack artifact
       uses: actions/upload-artifact@v4
       with:
         name: modrinth-pack
+        # Verwendet den im vorherigen Schritt gefundenen Dateipfad.
         path: ${{ steps.find_mrpack.outputs.mrpack_file }}
