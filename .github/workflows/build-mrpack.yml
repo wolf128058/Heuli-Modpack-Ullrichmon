@@ -1,0 +1,53 @@
+name: Build Modrinth Pack
+
+on:
+  # Löst den Workflow aus, wenn du Code auf den main-Branch pushst
+  # oder wenn du einen Pull Request öffnest
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Ermöglicht auch das manuelle Auslösen des Workflows von der GitHub Actions-Seite
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout des Codes
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. Setup und Installation von packwiz
+    - name: Set up packwiz
+      # Verwende eine vorgefertigte Action zum Installieren von packwiz, oder lade es manuell herunter
+      # Hier verwenden wir das offizielle Binary-Release von packwiz
+      run: |
+        curl -L https://github.com/comp500/packwiz/releases/latest/download/packwiz-linux.tar.gz | tar xz
+        chmod +x packwiz
+
+    # 3. Bauen des Modpacks als .mrpack
+    - name: Build Modrinth pack (.mrpack)
+      # Wir führen packwiz aus, um das Modrinth Pack zu erstellen.
+      # Der Befehl 'packwiz modrinth export' erstellt die .mrpack-Datei.
+      # Du musst den Namen deines Modpacks und die Versionsnummer kennen, um den Dateinamen zu identifizieren.
+      run: |
+        ./packwiz modrinth export
+
+    # 4. Finden des gebauten .mrpack-Dateinamens
+    # Da der Dateiname dynamisch sein kann (z.B. MeinModpack-1.0.0.mrpack), müssen wir ihn finden.
+    - name: Find mrpack file name
+      id: find_mrpack
+      run: |
+        # Wir suchen nach der Datei, die mit .mrpack endet
+        MRPACK_FILE=$(find . -name "*.mrpack")
+        # Speichern des Dateinamens als Output für den nächsten Schritt
+        echo "mrpack_file=$MRPACK_FILE" >> $GITHUB_OUTPUT
+
+    # 5. Hochladen des .mrpack als GitHub-Artefakt
+    - name: Upload .mrpack artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: modrinth-pack
+        path: ${{ steps.find_mrpack.outputs.mrpack_file }}
