@@ -67,7 +67,7 @@ jobs:
         
         # Aktualisiere die packwiz-Struktur und überschreibe den Index (-r)
         # Dies ist entscheidend, um sicherzustellen, dass index.toml korrekt generiert wird.
-        ./packwiz index -r
+        ./packwiz refresh
 
     # 6. Modrinth Pack (.mrpack) bauen
     - name: Build Modrinth pack (.mrpack)
